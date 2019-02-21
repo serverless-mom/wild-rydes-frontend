@@ -45,6 +45,7 @@ exports.handler = async event => {
   };
 
   try {
+    console.log("the onion");
     await uploadDir(folderPath, bucketName);
   } catch (error) {
     console.log(err);
