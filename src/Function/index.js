@@ -1,23 +1,46 @@
-const AWS = require("aws-sdk");
-const fs = require("fs");
-const fileName = "verify.html";
-//const rookout = require("rookout/lambda");
+var AWS = require("aws-sdk");
+var path = require("path");
+var fs = require("fs");
 
 const s3 = new AWS.S3();
 
 exports.handler = async event => {
-  let data = fs.readFileSync(`./${fileName}`, "utf8");
-  let params = {
-    Body: data,
-    Key: `${fileName}`,
-    Bucket: process.env.BUCKET_NAME
+  const uploadDir = function(s3Path, bucketName) {
+    let s3 = new AWS.S3();
+
+    function walkSync(currentDirPath, callback) {
+      fs.readdirSync(currentDirPath).forEach(function(name) {
+        var filePath = path.join(currentDirPath, name);
+        var stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          callback(filePath, stat);
+        } else if (stat.isDirectory()) {
+          walkSync(filePath, callback);
+        }
+      });
+    }
+
+    walkSync(s3Path, function(filePath, stat) {
+      let bucketPath = filePath.substring(s3Path.length + 1);
+      let params = {
+        Bucket: bucketName,
+        Key: bucketPath,
+        Body: fs.readFileSync(filePath)
+      };
+      s3.putObject(params, function(err, data) {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log(
+            "Successfully uploaded " + bucketPath + " to " + bucketName
+          );
+        }
+      });
+    });
   };
 
-  console.dir(params);
-
   try {
-    const s3Response = await s3.putObject(params).promise();
-    console.log(s3Response);
+    uploadDir(`./static`, process.env.BUCKET_NAME);
   } catch (error) {
     console.dir(err);
   } finally {
