@@ -8,6 +8,7 @@ const s3 = new AWS.S3();
 
 exports.handler = async event => {
   console.dir(event);
+  console.dir(bucketName);
   const uploadDir = function(s3Path, bucketName) {
     let s3 = new AWS.S3();
 
@@ -30,6 +31,7 @@ exports.handler = async event => {
         Key: bucketPath,
         Body: fs.readFileSync(filePath)
       };
+      console.dir(params);
       s3.putObject(params, function(err, data) {
         if (err) {
           console.log(err);
