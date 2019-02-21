@@ -6,7 +6,6 @@ const s3 = new AWS.S3();
 
 exports.handler = async event => {
   console.dir(event);
-  const ports = JSON.parse(process.env.STACKERY_PORTS);
   let data = fs.readFileSync(`./${fileName}`, "utf8");
   let params = {
     Body: data,
