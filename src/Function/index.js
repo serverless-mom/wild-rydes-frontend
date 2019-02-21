@@ -6,7 +6,6 @@ const fileName = "verify.html";
 const s3 = new AWS.S3();
 
 exports.handler = async event => {
-  console.dir(event);
   let data = fs.readFileSync(`./${fileName}`, "utf8");
   let params = {
     Body: data,
@@ -14,10 +13,12 @@ exports.handler = async event => {
     Bucket: process.env.BUCKET_NAME
   };
 
+  console.dir(params);
+
   try {
     await s3.putObject(params);
   } catch (error) {
-    console.log(err);
+    console.dir(err);
   } finally {
     return {};
   }
