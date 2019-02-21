@@ -4,7 +4,7 @@ const fileName = "verify.html";
 
 const s3 = new AWS.S3();
 
-module.exports = async event => {
+exports.handler = async event => {
   console.dir(event);
   const ports = JSON.parse(process.env.STACKERY_PORTS);
   let data = fs.readFileSync(`./${fileName}`, "utf8");
