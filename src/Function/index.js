@@ -16,7 +16,8 @@ exports.handler = async event => {
   console.dir(params);
 
   try {
-    await s3.putObject(params);
+    const s3Response = await s3.putObject(params).promise();
+    console.log(s3Response);
   } catch (error) {
     console.dir(err);
   } finally {
