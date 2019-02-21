@@ -1,11 +1,11 @@
 const AWS = require("aws-sdk");
 const fs = require("fs");
 const fileName = "verify.html";
-const rookout = require("rookout/lambda");
+//const rookout = require("rookout/lambda");
 
 const s3 = new AWS.S3();
 
-exports.handler = rookout.wrap(async event => {
+exports.handler = async event => {
   console.dir(event);
   let data = fs.readFileSync(`./${fileName}`, "utf8");
   let params = {
@@ -21,4 +21,4 @@ exports.handler = rookout.wrap(async event => {
   } finally {
     return {};
   }
-});
+};
