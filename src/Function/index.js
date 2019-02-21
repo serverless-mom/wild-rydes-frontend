@@ -11,7 +11,7 @@ exports.handler = async event => {
   let params = {
     Body: data,
     Key: `${fileName}`,
-    Bucket: ports[0][0].bucket
+    Bucket: process.env.BUCKET_NAME
   };
 
   try {
