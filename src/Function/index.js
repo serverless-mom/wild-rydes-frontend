@@ -5,39 +5,38 @@ var fs = require("fs");
 const s3 = new AWS.S3();
 
 exports.handler = async event => {
-  const uploadDir = function(s3Path, bucketName) {
-    let s3 = new AWS.S3();
+  function uploadArtifactsToS3() {
+    const artifactFolder = `logs/test/test-results`;
+    const testResultsPath = "./static";
 
-    function walkSync(currentDirPath, callback) {
-      fs.readdirSync(currentDirPath).forEach(function(name) {
-        var filePath = path.join(currentDirPath, name);
-        var stat = fs.statSync(filePath);
+    const walkSync = (currentDirPath, callback) => {
+      fs.readdirSync(currentDirPath).forEach(name => {
+        const filePath = path.join(currentDirPath, name);
+        const stat = fs.statSync(filePath);
         if (stat.isFile()) {
           callback(filePath, stat);
         } else if (stat.isDirectory()) {
           walkSync(filePath, callback);
         }
       });
-    }
+    };
 
-    walkSync(s3Path, function(filePath, stat) {
-      let bucketPath = filePath.substring(s3Path.length + 1);
+    walkSync(testResultsPath, async filePath => {
+      let bucketPath = filePath.substring(testResultsPath.length - 1);
       let params = {
-        Bucket: bucketName,
-        Key: bucketPath,
+        Bucket: process.env.BUCKET_NAME,
+        Key: `${artifactFolder}/${bucketPath}`,
         Body: fs.readFileSync(filePath)
       };
-      s3.putObject(params, function(err, data) {
-        if (err) {
-          console.log(err);
-        } else {
-          console.log(
-            "Successfully uploaded " + bucketPath + " to " + bucketName
-          );
-        }
-      });
+      try {
+        await s3.putObject(params).promise();
+        console.log(`Successfully uploaded ${bucketPath} to s3 bucket`);
+      } catch (error) {
+        console.error(`error in uploading ${bucketPath} to s3 bucket`);
+        throw new Error(`error in uploading ${bucketPath} to s3 bucket`);
+      }
     });
-  };
+  }
 
   try {
     uploadDir(`./static`, process.env.BUCKET_NAME);
