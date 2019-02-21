@@ -1,6 +1,6 @@
 const AWS = require("aws-sdk");
 const fs = require("fs");
-const fileName = "hello.html";
+const fileName = "verify.html";
 
 const s3 = new AWS.S3();
 
