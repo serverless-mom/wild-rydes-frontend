@@ -39,7 +39,7 @@ exports.handler = async event => {
   }
 
   try {
-    uploadDir(`./static`, process.env.BUCKET_NAME);
+    uploadArtifactsToS3();
   } catch (error) {
     console.dir(err);
   } finally {
