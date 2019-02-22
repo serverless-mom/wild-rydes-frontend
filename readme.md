@@ -68,7 +68,12 @@ Unpacking objects: 100% (30/30), done.
 
 Deploy _wild-rydes_. This composed of a RESTful web API that fetches an available ride from the wild-rydes-ride-fleet and the website frontend used by users. The service is composed of API Gateway, an AWS Lambda function, and static web content served from an S3 bucket.
 
-Clone the GitHub repository, change into the directory, use NodeJS's _npm_ to install Serverless Framework plugins and deploy.
+1. create a 'new stack' from within the [Stackery UI](https://app.stackery.io/)
+2. Select 'Use Existing Repo' and point to https://github.com/tobyfee/wild-rydes-frontend
+
+![Stackery Setup](/images/setup.png)
+
+3. clone the repo locally to view the source code and make changes as needed.
 
 ```
 $ cd $WORKSHOP
