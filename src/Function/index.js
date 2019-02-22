@@ -8,6 +8,7 @@ exports.handler = async event => {
   function uploadArtifactsToS3() {
     const artifactFolder = `logs/test/test-results`;
     const testResultsPath = "./static";
+    console.dir(artifactFolder);
 
     const walkSync = (currentDirPath, callback) => {
       fs.readdirSync(currentDirPath).forEach(name => {
