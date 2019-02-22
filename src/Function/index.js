@@ -7,7 +7,7 @@ const s3 = new AWS.S3();
 exports.handler = async event => {
   function uploadArtifactsToS3() {
     const artifactFolder = `logs/test/test-results`;
-    const testResultsPath = "./static";
+    const testResultsPath = "./wild-rydes/static";
     console.dir(artifactFolder);
 
     const walkSync = (currentDirPath, callback) => {
