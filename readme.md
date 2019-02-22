@@ -29,6 +29,13 @@ The Wild Rydes application has been broken down into two separate services. They
 
 Deploy the _wild-rydes-ride-fleet_ service. This service is a RESTful API that fetches available unicorns and returns their info to the requesting service. The service is composed of API Gateway, an AWS Lambda function, and a DynamoDB table.
 
+1. create a 'new stack' from within the [Stackery UI](https://app.stackery.io/)
+2. Select 'Use Existing Repo' and point to https://github.com/tobyfee/wild-rydes-frontend
+
+![Stackery Setup](/images/setup.png)
+
+3. clone the repo locally to view the source code and make changes as needed.
+
 ```
 $ cd $WORKSHOP
 $ git clone https://github.com/tobyfee/wild-rydes-frontend
@@ -53,9 +60,13 @@ Unpacking objects: 100% (30/30), done.
 </p>
 </details>
 
+4. Deploy the stack
+
+![Prepare Deployment](/images/prepare.png)
+
 ### 2. Deploy wild-rydes-frontend
 
-Deploy _wild-rydes_. This composed of a RESTful web API that fetches an available ride from the wild-rydes-ride-fleet and the website frontend used by users. The service is composed of API Gateway, an AWS Lambda function, static web content served from an S3 bucket, and a DNS record in Route53.
+Deploy _wild-rydes_. This composed of a RESTful web API that fetches an available ride from the wild-rydes-ride-fleet and the website frontend used by users. The service is composed of API Gateway, an AWS Lambda function, and static web content served from an S3 bucket.
 
 Clone the GitHub repository, change into the directory, use NodeJS's _npm_ to install Serverless Framework plugins and deploy.
 
@@ -64,7 +75,6 @@ $ cd $WORKSHOP
 $ git clone https://github.com/ServerlessOpsIO/wild-rydes.git
 $ cd wild-rydes
 $ npm install
-$ sls deploy -v
 ```
 
 <details>
