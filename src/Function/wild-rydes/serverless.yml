@@ -1,0 +1,163 @@
+# Wild Rydes website
+service: wild-rydes
+
+plugins:
+  - serverless-s3-sync
+  - serverless-python-requirements
+
+
+custom:
+  stage: "${env:SLS_STAGE, 'dev'}"
+  region: "${opt:region, 'us-east-2'}"
+  log_level: "${env:LOG_LEVEL, 'INFO'}"
+
+  request_unicorn_url: "${cf:wild-rydes-ride-fleet-${self:custom.stage}.RequestUnicornUrl}"
+
+  hostedZoneName: "${ssm:/route53/root/ServerlessOpsDomain}"
+  bucketName: "${self:service}-${self:custom.stage}.${self:custom.hostedZoneName}"
+  # Additional region zone IDs and DNS names found here:
+  # https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+  aliasHostedZoneId: Z2O1EMRO9K5GLX    # us-east-2
+  aliasDNSName: s3-website.us-east-2.amazonaws.com
+
+  s3Sync:
+    - bucketName: ${self:custom.bucketName}
+      localDir: static
+      deleteRemoved: false
+
+  config_s3_object: 'js/config.js'
+
+
+provider:
+  name: aws
+  runtime: python3.6
+  stage: ${self:custom.stage}
+  region: ${self:custom.region}
+  cfnRole: "arn:aws:iam::${env:AWS_ACCOUNT}:role/CloudFormationDeployRole"
+  environment:
+    LOG_LEVEL: ${self:custom.log_level}
+  stackTags:
+    serverless:service: ${self:service}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "s3:PutObject"
+        - "s3:PutObjectAcl"
+        - "s3:PutObjectVersionAcl"
+        - "s3:DeleteObject"
+      Resource:
+        - Fn::Join:
+          - '/'
+          - - Fn::GetAtt:
+              - StaticSite
+              - Arn
+            - '*'
+
+
+functions:
+  RequestRide:
+    handler: handlers/request_ride.handler
+    description: "Request a ride."
+    memorySize: 128
+    timeout: 29
+    environment:
+      LOG_LEVEL: "${self:custom.log_level}"
+      REQUEST_UNICORN_URL: "${self:custom.request_unicorn_url}"
+    events:
+      - http:
+          path: /ride
+          method: post
+          cors: true
+
+  StaticSiteConfig:
+    handler: handlers/update_static_site_config.handler
+    description: "Update site config."
+    memorySize: 128
+    timeout: 60
+
+
+resources:
+  Resources:
+    ## Specifying the S3 Bucket
+    StaticSite:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:custom.bucketName}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: error.html
+
+    StaticSiteS3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: StaticSite
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: "*"
+              Action:
+              - s3:GetObject
+              Resource:
+                Fn::Join: [
+                  "", [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "StaticSite"
+                    },
+                    "/*"
+                  ]
+                ]
+
+    DnsRecord:
+      Type: "AWS::Route53::RecordSet"
+      Properties:
+        AliasTarget:
+          DNSName: ${self:custom.aliasDNSName}
+          HostedZoneId: ${self:custom.aliasHostedZoneId}
+        HostedZoneName: ${self:custom.hostedZoneName}.
+        Name:
+          Ref: StaticSite
+        Type: 'A'
+
+    StaticSiteConfigUpdate:
+      Type: "Custom::ConfigFile"
+      Properties:
+        ServiceToken:
+          Fn::GetAtt:
+            - StaticSiteConfigLambdaFunction
+            - Arn
+        S3Bucket:
+          Ref: StaticSite
+        S3Object: "${self:custom.config_s3_object}"
+        RequestRideUrl:
+          Fn::Join:
+            - ""
+            - - "https://"
+              - Ref: ApiGatewayRestApi
+              - ".execute-api."
+              - Ref: AWS::Region
+              - ".amazonaws.com/"
+              - "${self:custom.stage}"
+              - "/ride"
+
+  Outputs:
+    StaticSiteS3BucketName:
+      Description: "Name of site S3 bucket"
+      Value:
+        'Ref': StaticSite
+      Export:
+        Name: "${self:service}-${self:custom.stage}-StaticSiteS3BucketName"
+
+    StaticSiteS3BucketWebsiteURL:
+      Description: "Website URL using Route53 record"
+      Value:
+        Fn::Join:
+          - ''
+          - - 'http://'
+            - Ref: StaticSite
+      Export:
+        Name: "${self:service}-${self:custom.stage}-StaticSiteS3BucketWebsiteURL"
+
