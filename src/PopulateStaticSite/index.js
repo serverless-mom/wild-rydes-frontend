@@ -1,6 +1,7 @@
 var AWS = require("aws-sdk");
 var path = require("path");
 var fs = require("fs");
+const cfnCR = require("cfn-custom-resource");
 
 const s3 = new AWS.S3();
 
