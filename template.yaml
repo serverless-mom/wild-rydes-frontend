@@ -1,14 +1,72 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Resources:
-  Function:
+  WildRydeFrontend:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-wildrydefrontend
+    Metadata:
+      StackeryName: StaticSite
+  githubToS3:
+    Type: Custom::githubToS3
+    Properties:
+      ServiceToken: !GetAtt PopulateStaticSite.Arn
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
+        - ResourceName: APIGatewayRestApi
+      StageName: !Ref EnvironmentAPIGatewayStageName
+      DefinitionBody:
+        swagger: '2.0'
+        info: {}
+        paths:
+          /ride:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RequestRide.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+    Metadata:
+      StackeryName: APIGatewayRestApi
+  RequestRide:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub ${AWS::StackName}-Function
+      FunctionName: !Sub ${AWS::StackName}-RequestRide
       Description: !Sub
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: Function
-      CodeUri: src/Function
+        - ResourceName: RequestRide
+      CodeUri: src/RequestRide
+      Handler: handlers/request_ride.handler
+      Runtime: python3.6
+      MemorySize: 3008
+      Timeout: 30
+      Tracing: Active
+      Policies:
+        - AWSXrayWriteOnlyAccess
+      Events:
+        ApiPOSTride:
+          Type: Api
+          Properties:
+            Path: /ride
+            Method: POST
+            RestApiId: !Ref Api
+      Environment:
+        Variables:
+          REQUEST_UNICORN_URL: ${self:custom.request_unicorn_url}
+    Metadata:
+      StackeryName: RequestRide
+  PopulateStaticSite:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-PopulateStaticSite
+      Description: !Sub
+        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
+        - ResourceName: PopulateSite
+      CodeUri: src/PopulateStaticSite
       Handler: index.handler
       Runtime: nodejs8.10
       MemorySize: 3008
@@ -22,105 +80,12 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref WildRydeFrontend
           BUCKET_ARN: !GetAtt WildRydeFrontend.Arn
-  WildRydeFrontend:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub ${AWS::StackName}-wildrydefrontend
     Metadata:
-      StackeryName: wild-ryde-frontend
-  githubToS3:
-    Type: Custom::githubToS3
+      StackeryName: PopulateSite
+  PopulateStaticSiteDeployTrigger:
+    Type: Custom::FunctionDeployTrigger
     Properties:
-      ServiceToken: !GetAtt Function.Arn
-  LoadTable:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-LoadTable
-      Description: !Sub
-        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: LoadTable
-      CodeUri: src/LoadTable
-      Handler: handlers/load_table.handler
-      Runtime: python3.6
-      MemorySize: 3008
-      Timeout: 30
-      Tracing: Active
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - DynamoDBCrudPolicy:
-            TableName: !Ref UnicornsTable
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref UnicornsTable
-          TABLE_ARN: !GetAtt UnicornsTable.Arn
-    Metadata:
-      StackeryName: LoadTable
-  UnicornsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: ${self:custom.unicorn_hash_key}
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: ${self:custom.unicorn_hash_key}
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-      TableName: !Sub ${AWS::StackName}-UnicornsTable
-    Metadata:
-      StackeryName: UnicornsTable
-  Api:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub
-        - ${ResourceName} From Stack ${StackTagName} Environment ${EnvironmentTagName}
-        - ResourceName: ApiGatewayRestApi
-      StageName: !Ref EnvironmentAPIGatewayStageName
-      DefinitionBody:
-        swagger: '2.0'
-        info: {}
-        paths:
-          /unicorn:
-            get:
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                type: aws_proxy
-                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RequestUnicorn.Arn}/invocations
-              responses: {}
-      EndpointConfiguration: REGIONAL
-    Metadata:
-      StackeryName: ApiGatewayRestApi
-  RequestUnicorn:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub ${AWS::StackName}-RequestUnicorn
-      Description: !Sub
-        - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
-        - ResourceName: RequestUnicorn
-      CodeUri: src/RequestUnicorn
-      Handler: handlers/get_unicorn.handler
-      Runtime: python3.6
-      MemorySize: 3008
-      Timeout: 30
-      Tracing: Active
-      Policies:
-        - AWSXrayWriteOnlyAccess
-        - DynamoDBCrudPolicy:
-            TableName: !Ref UnicornsTable
-      Events:
-        ApiGETunicorn:
-          Type: Api
-          Properties:
-            Path: /unicorn
-            Method: GET
-            RestApiId: !Ref Api
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref UnicornsTable
-          TABLE_ARN: !GetAtt UnicornsTable.Arn
-    Metadata:
-      StackeryName: RequestUnicorn
+      ServiceToken: !GetAtt PopulateStaticSite.Arn
 Parameters:
   StackTagName:
     Type: String
