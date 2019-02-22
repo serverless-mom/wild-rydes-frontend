@@ -40,8 +40,8 @@ Resources:
         - Stack ${StackTagName} Environment ${EnvironmentTagName} Function ${ResourceName}
         - ResourceName: LoadTable
       CodeUri: src/LoadTable
-      Handler: index.handler
-      Runtime: nodejs8.10
+      Handler: handlers/load_table.handler
+      Runtime: python3.6
       MemorySize: 3008
       Timeout: 30
       Tracing: Active
