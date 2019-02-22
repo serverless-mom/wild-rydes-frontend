@@ -28,6 +28,10 @@ Resources:
       BucketName: !Sub ${AWS::StackName}-wildrydefrontend
     Metadata:
       StackeryName: wild-ryde-frontend
+  githubToS3:
+    Type: Custom::githubToS3
+    Properties:
+      ServiceToken: !GetAtt Function.Arn
 Parameters:
   StackTagName:
     Type: String
