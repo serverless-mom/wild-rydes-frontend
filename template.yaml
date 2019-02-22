@@ -10,7 +10,7 @@ Resources:
   githubToS3:
     Type: Custom::githubToS3
     Properties:
-      ServiceToken: !GetAtt PopulateStaticSite.Arn
+      ServiceToken: !GetAtt PopulateSite.Arn
   Api:
     Type: AWS::Serverless::Api
     Properties:
