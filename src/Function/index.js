@@ -40,10 +40,11 @@ exports.handler = async event => {
   }
 
   try {
-    uploadArtifactsToS3();
+    await uploadArtifactsToS3();
   } catch (error) {
-    console.dir(err);
+    console.log(err);
+    await cfnCR.sendFailure(err.message, event);
   } finally {
-    return {};
+    await cfnCR.sendSuccess("s3-copy", {}, event);
   }
 };
