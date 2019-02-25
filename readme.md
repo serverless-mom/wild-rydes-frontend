@@ -36,7 +36,9 @@ Create the stack that will host the frontend service, it will consist of an S3 b
 
 2. Add an S3 bucket
    Click 'add resource' then click on an AWS Simple Storage Solution (S3) bucket. This bucket will host our frontend static site.
+
    ![Add resource](/images/add-resource.png)
+
    once you've added a bucket to the canvas you can click it to set a display name and a logical ID
    ![S3 Bucket](/images/object-store.png)
 
@@ -58,9 +60,10 @@ We want to give that lambda access to write to our S3 bucket, so drag a line fro
 <details>
 <summary><strong>What does connecting that line do?</strong></summary>
 <p>
-1) save you ten minutes of clicking around the AWS console creating the necessary permissions.
 
-2. add a few environment variables so that it's easy to write code pointing to the S3 bucket
+- save you ten minutes of clicking around the AWS console creating the necessary permissions.
+
+- add a few environment variables so that it's easy to write code pointing to the S3 bucket
 
 Click the lambda to see the new permission settings and the environment variables listed toward the bottom of the settings pane.
 
@@ -80,8 +83,12 @@ After that click the commit ID to go to your code repository,
 
 And clone it locally!
 
-5. prepare a deployment
-   ![Prepare Deployment](/images/prepare.png)
+5. work with your code locally
+   In your favorite IDE, take a look at
+
+6. prepare a deployment
+
+![Prepare Deployment](/images/prepare.png)
 
 ##### A word on secrets
 
