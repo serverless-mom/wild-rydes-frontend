@@ -84,9 +84,11 @@ After that click the commit ID to go to your code repository,
 And clone it locally!
 
 5. work with your code locally
-   In your favorite IDE, take a look at
+   In your favorite IDE, take a look at your project to see what structure Stackery has created. Your placeholder function will be in the src/ directory
 
-6. prepare a deployment
+   ![Prepare Deployment](/images/project-view.png)
+
+6) prepare a deployment
 
 ![Prepare Deployment](/images/prepare.png)
 
