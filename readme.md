@@ -86,69 +86,260 @@ And clone it locally!
 5. work with your code locally
    In your favorite IDE, take a look at your project to see what structure Stackery has created. Your placeholder function will be in the src/ directory
 
-   ![Prepare Deployment](/images/project-view.png)
+   ![view of the project code](/images/project-view.png)
 
-6) prepare a deployment
+   First let's grab the source for our frontend code, clone [the demo repository](https://github.com/ServerlessOpsIO/wild-rydes) and move the 'static' directory to the same directory as your lambda
+
+   Now let's give our lambda the code to automatically populate the S3 bucket. In `src/Function/index.js` add:
+
+   ```
+   var AWS = require("aws-sdk");
+   var path = require("path");
+   var fs = require("fs");
+   const s3 = new AWS.S3();
+   exports.handler = async event => {
+   function uploadArtifactsToS3() {
+   const artifactFolder = `logs/test/test-results`;
+   const testResultsPath = "./wild-rydes/static";
+   console.dir(artifactFolder);
+
+    const walkSync = (currentDirPath, callback) => {
+      fs.readdirSync(currentDirPath).forEach(name => {
+        const filePath = path.join(currentDirPath, name);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          callback(filePath, stat);
+        } else if (stat.isDirectory()) {
+          walkSync(filePath, callback);
+        }
+      });
+    };
+
+    walkSync(testResultsPath, async filePath => {
+      let bucketPath = filePath.substring(testResultsPath.length - 1);
+      let params = {
+        Bucket: process.env.BUCKET_NAME,
+        Key: `${artifactFolder}/${bucketPath}`,
+        Body: fs.readFileSync(filePath)
+      };
+      try {
+        await s3.putObject(params).promise();
+        console.log(`Successfully uploaded ${bucketPath} to s3 bucket`);
+      } catch (error) {
+        console.error(`error in uploading ${bucketPath} to s3 bucket`);
+        throw new Error(`error in uploading ${bucketPath} to s3 bucket`);
+      }
+    });
+   }
+   try {
+   await uploadArtifactsToS3();
+   } catch (error) {
+   console.log(err);
+   } finally {
+   return {};
+   }
+   };
+
+   ```
+
+6. prepare a deployment
+   from the 'deploy' tab at the left, prepare a deployment in the dev environment
 
 ![Prepare Deployment](/images/prepare.png)
+
+When it's ready hit 'deploy', you'll be taken to the CloudFormation dashboard, where you can deploy these changes
+
+10. Exercise your Lambda
+
+From the Stackery dashboard, click your "populate your S3 Bucket" lambda to go to the AWS console, create a test event, and exercise that lambda, triggering this lambda just once will populate your S3 bucket with the necessary frontend content
+
+<details>
+<summary><strong>Adding automation</strong></summary>
+<p>
+
+you can greatly streamline this process by triggering this lambda [automatically whenever you deploy to this stack](https://support.stackery.io/hc/en-us/articles/360003803151-Automatically-deploying-html-from-Github-to-S3) using a custom CloudFormation resource
+
+</p>
+</details>
+
+11. Add the API endpoint and connected Lambda
+
+- within the Stackery UI add a lambda and an API gateway
+- click the API gateway to add an endpoint to POST `/ride`
+- add a connecting line from the gateway to the lambda
+- Click on the Lambda and change its runtime to Python 3.6 and its source location to `Handlers/RequestRide`
+- Commit these changes with the button at the left
+- `git pull` the changes to your local copy.
+- Within `Handlers/` you'll see a new function. Into that function add the following Python Code
+
+```
+'''Request a ride'''
+
+from datetime import datetime
+import logging
+import json
+import os
+import uuid
+
+import requests
+
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logging.root.setLevel(logging.getLevelName(log_level))  # type:ignore
+_logger = logging.getLogger(__name__)
+
+REQUEST_UNICORN_URL = os.environ.get('REQUEST_UNICORN_URL')
+
+
+def _generate_ride_id():
+    '''Generate a ride ID.'''
+    return uuid.uuid1()
+
+
+def _get_ride(pickup_location):
+    '''Get a ride.'''
+    ride_id = _generate_ride_id()
+    unicorn = _get_unicorn()
+
+    # NOTE: upstream they replace Rider with User but that seems silly.
+    resp = {
+        'RideId': str(ride_id),
+        'Unicorn': unicorn,
+        'RequestTime': str(_get_timestamp_from_uuid(ride_id)),
+    }
+    return resp
+
+
+def _get_timestamp_from_uuid(u):
+    '''Return a timestamp from the given UUID'''
+    return datetime.fromtimestamp((u.time - 0x01b21dd213814000) * 100 / 1e9)
+
+
+def _get_unicorn(url=REQUEST_UNICORN_URL):
+    '''Return a unicorn from the fleet'''
+    unicorn = requests.get(REQUEST_UNICORN_URL)
+    return unicorn.json()
+
+
+def _get_pickup_location(body):
+    '''Return pickup location from event'''
+    return body.get('PickupLocation')
+
+
+def handler(event, context):
+    '''Function entry'''
+    _logger.info('Request: {}'.format(json.dumps(event)))
+
+    body = json.loads(event.get('body'))
+    pickup_location = _get_pickup_location(body)
+    ride_resp = _get_ride(pickup_location)
+
+    resp = {
+        'statusCode': 201,
+        'body': json.dumps(ride_resp),
+        'headers': {
+            "Access-Control-Allow-Origin": "*",
+        }
+    }
+
+    _logger.info('Response: {}'.format(json.dumps(resp)))
+    return resps
+
+```
+
+- push your changes
+- prepare and deploy in the Stackery UI
+
+12. viewing/testing these pieces
+
+The 'view' tab at the left of the Stackery UI will show you all of the resources that are currently deployed on AWS. The distinction between the Edit view is that the edit view shows changes that are _planned_ but may wait for other things to be deployed.
+
+click on either the S3 bucket or the API endpoint, both will show you the URL that they're deployed to. Use this to test your API or preview your site!
 
 ##### A word on secrets
 
 The Lambda dashboard within Stackery lets you set config variables but _these will be visible as part of your repository code_
 
-![Stackery Secrets](/images/secrets.png)
-
 For API keys and the like, the Environments tab lets you set all the secret config values you need.
 
-### 2. Deploy wild-rydes-frontend
+![Stackery Secrets](/images/secrets.png)
 
-Deploy _wild-rydes_. This composed of a RESTful web API that fetches an available ride from the wild-rydes-ride-fleet and the website frontend used by users. The service is composed of API Gateway, an AWS Lambda function, and static web content served from an S3 bucket.
+### 2. Deploy wild-rydes-ride-fleet
+
+Deploy _wild-rydes-fleet_. This is composed of an API endpoint, a lambda to serve that data, a DynamoDB table, and a final utility Lambda to populate the dynamoDB table
 
 1. create a 'new stack' from within the [Stackery UI](https://app.stackery.io/)
-2. Select 'Use Existing Repo' and point to https://github.com/tobyfee/wild-rydes-frontend
+2. Add the required components
+
+We want to have a public API available to grab data from our database
+
+- within the Stackery UI add a lambda and an API gateway, and a DynamoDB Table
+- click the API gateway to add an endpoint to GET `/unicorn`
+- add a connecting line from the gateway to the lambda, and from the Lambda to the DynamoDB table
+- Click on the Lambda and change its runtime to Python 3.6 and its source location to `Handlers/RequestUnicorn`
+- Commit these changes with the button at the left
+- `git pull` the changes to your local copy.
+- Within `Handlers/` you'll see a new function. Into that function add the following Python Code
+
+```
+'''Request a ride'''
+
+import logging
+import json
+import os
+import random
+
+import boto3
+
+log_level = os.environ.get('LOG_LEVEL', 'INFO')
+logging.root.setLevel(logging.getLevelName(log_level))  # type:ignore
+_logger = logging.getLogger(__name__)
+
+# DynamoDB
+DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE')
+UNICORN_HASH_KEY = os.environ.get('UNICORN_HASH_KEY')
+dynamodb = boto3.resource('dynamodb')
+DDT = dynamodb.Table(DYNAMODB_TABLE)
+
+def _get_unicorn():
+    '''Return a unicorn from the fleet'''
+    # Get a few of them and return one at random. Need to eventually randomize
+    # where in the table we start our lookup.
+    results = DDT.scan(
+        Limit=5,
+    )
+    unicorns = results.get('Items')
+    unicorn = unicorns[random.randint(0, len(unicorns) - 1)]
+
+    return unicorn
+
+def handler(event, context):
+    '''Function entry'''
+    _logger.debug('Request: {}'.format(json.dumps(event)))
+
+    resp = _get_unicorn()
+
+    resp = {
+        'statusCode': 200,
+        'body': json.dumps(resp),
+    }
+    _logger.debug('Response: {}'.format(json.dumps(resp)))
+    return resp
+
+```
+
+- push your changes
+- prepare and deploy in the Stackery UI
 
 ![Stackery Setup](/images/setup.png)
 
-3. clone the repo locally to view the source code and make changes as needed.
-
-```
-$ cd $WORKSHOP
-$ git clone https://github.com/tobyfee/wild-rydes-frontend.git
-$ cd wild-rydes
-$ npm install
-```
-
-<details>
-<summary><strong>Output</strong></summary>
-<p>
-
-```
-$ cd $WORKSHOP
-
-$ git clone https://github.com/tobyfee/wild-rydes.git
-Cloning into 'wild-rydes'...
-remote: Enumerating objects: 157, done.
-remote: Total 157 (delta 0), reused 0 (delta 0), pack-reused 157
-Receiving objects: 100% (157/157), 9.46 MiB | 6.68 MiB/s, done.
-Resolving deltas: 100% (31/31), done.
-
-$ cd wild-rydes
-
-$ npm install
-npm notice created a lockfile as package-lock.json. You should commit this file.
-added 77 packages in 6.546s
-
-```
-
-</p>
-</details>
+3. deploy your new stack
 
 Q: What domain will my new service have?
 
 <details>
 <summary><strong>Answer</strong></summary>
 <p>
-Stackery will automatically issue a domain for API gateways you create
+Stackery will automatically issue a domain for API gateways you create, you can see which URL's have been issued after deploying by going to the 'view' menu.
 
 </p>
 </details>
@@ -170,3 +361,4 @@ Q: how does Stackery (and CloudFormation) store the information about the server
 AWS uses the [Serverless Application Model (SAM)](https://www.stackery.io/blog/aws-sam-yaml-intro/) yaml format, an open source standard for creating a template for your stack.
 </p>
 </details>
+```
