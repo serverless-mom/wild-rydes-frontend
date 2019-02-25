@@ -25,44 +25,63 @@ The Wild Rydes application has been broken down into two separate services. They
 
 ## Instructions
 
-### 1. Deploy wild-rydes-ride-fleet
+### 1. Create your Wild Rydes frontend
 
-Deploy the _wild-rydes-ride-fleet_ service. This service is a RESTful API that fetches available unicorns and returns their info to the requesting service. The service is composed of API Gateway, an AWS Lambda function, and a DynamoDB table.
+Create the stack that will host the frontend service, it will consist of an S3 bucket to host the static site, a Lambda to populate that bucket, and an API gateway, with another lambda to handle that traffic.
 
-1. create a 'new stack' from within the [Stackery UI](https://app.stackery.io/)
-2. Select 'Use Existing Repo' and point to https://github.com/tobyfee/wild-rydes
+1. create a new Stack on Stackery
+   In this case we'll start with a blank canvas and add all the resources. The process will take less than 10 minutes
+   ![A new Stack](/images/new-stack.png)
+   Choose a hosting provider, set a stack name, and pick 'create new repo,' the other settings can stay at default.
 
-![Stackery Setup](/images/setup.png)
+2. Add an S3 bucket
+   Click 'add resource' then click on an AWS Simple Storage Solution (S3) bucket. This bucket will host our frontend static site.
+   ![Add resource](/images/add-resource.png)
+   once you've added a bucket to the canvas you can click it to set a display name and a logical ID
+   ![S3 Bucket](/images/object-store.png)
 
-3. clone the repo locally to view the source code and make changes as needed.
-
-```
-$ cd $WORKSHOP
-$ git clone https://github.com/tobyfee/wild-rydes.git
-
-```
+Q: What is a logical name used for?
 
 <details>
-<summary><strong>Output</strong></summary>
+<summary><strong>Answer</strong></summary>
 <p>
+The name used for a resource within the template is a logical name. When AWS CloudFormation creates the resource, it generates a physical name that is based on the combination of the logical name, the stack name, and a unique ID.
+</p>
+</details>
 
-```
-$ cd $WORKSHOP
+3. Add a Lambda to populate the S3 bucket
+   Click 'Add Resource' and this time add an AWS Serverless Function (Lambda)
 
-$ git clone https://github.com/tobyfee/wild-rydes-frontend
-Cloning into 'wild-rydes-frontend'...
-remote: Counting objects: 30, done.
-remote: Total 30 (delta 0), reused 0 (delta 0), pack-reused 30
-Unpacking objects: 100% (30/30), done.
+We want to give that lambda access to write to our S3 bucket, so drag a line from the right side of the lambda over to the S3 bucket
+![create a connection](/images/connection.png)
 
-```
+<details>
+<summary><strong>What does connecting that line do?</strong></summary>
+<p>
+1) save you ten minutes of clicking around the AWS console creating the necessary permissions.
+
+2. add a few environment variables so that it's easy to write code pointing to the S3 bucket
+
+Click the lambda to see the new permission settings and the environment variables listed toward the bottom of the settings pane.
+
+![Prepare Deployment](/images/lambda-vars.png)
 
 </p>
 </details>
 
-4. Deploy the stack
+you can click in to the lambda to give it a name or change its memory and language settings, but we can stick with the defaults.
 
-![Prepare Deployment](/images/prepare.png)
+4. commit your changes and download your stack
+
+click the 'commit' button at the right, it might be informative here to look at the changes [made to the Serverless Application Model (SAM)](https://www.stackery.io/blog/aws-sam-yaml-intro/) template changes in this commit. Following these changes progressively can give you some understanding of how the template works.
+
+After that click the commit ID to go to your code repository,
+![Prepare Deployment](/images/commit-repo.png)
+
+And clone it locally!
+
+5. prepare a deployment
+   ![Prepare Deployment](/images/prepare.png)
 
 ##### A word on secrets
 
